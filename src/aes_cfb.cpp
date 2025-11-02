@@ -1,8 +1,7 @@
 #include "../include/aes_cfb.h"
-#include <iostream>
 #include <random>
-#include <chrono>
 #include <cstring>
+#include <algorithm>
 
 using namespace std;
 
@@ -31,16 +30,13 @@ const uint8_t AES_CFB::Rcon[11] = {
     0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36
 };
 
-// Key expansion
 void AES_CFB::KeyExpansion(const uint8_t* key, uint32_t* w) {
     uint32_t temp;
     int i = 0;
-
     while (i < Nk) {
         w[i] = (key[4*i] << 24) | (key[4*i+1] << 16) | (key[4*i+2] << 8) | key[4*i+3];
         i++;
     }
-
     i = Nk;
     while (i < Nb * (Nr + 1)) {
         temp = w[i-1];
@@ -56,35 +52,29 @@ void AES_CFB::KeyExpansion(const uint8_t* key, uint32_t* w) {
 }
 
 void AES_CFB::AddRoundKey(uint8_t* state, const uint32_t* roundKey) {
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
             state[i*4 + j] ^= (roundKey[j] >> (24 - 8*i)) & 0xff;
-        }
-    }
 }
 
 void AES_CFB::SubBytes(uint8_t* state) {
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 16; i++)
         state[i] = sbox[state[i]];
-    }
 }
 
 void AES_CFB::ShiftRows(uint8_t* state) {
     uint8_t temp;
-    
     temp = state[1];
     state[1] = state[5];
     state[5] = state[9];
     state[9] = state[13];
     state[13] = temp;
-    
     temp = state[2];
     state[2] = state[10];
     state[10] = temp;
     temp = state[6];
     state[6] = state[14];
     state[14] = temp;
-    
     temp = state[3];
     state[3] = state[15];
     state[15] = state[11];
@@ -113,7 +103,6 @@ void AES_CFB::MixColumns(uint8_t* state) {
         temp[1] = state[c] ^ multiply(0x02, state[4+c]) ^ multiply(0x03, state[8+c]) ^ state[12+c];
         temp[2] = state[c] ^ state[4+c] ^ multiply(0x02, state[8+c]) ^ multiply(0x03, state[12+c]);
         temp[3] = multiply(0x03, state[c]) ^ state[4+c] ^ state[8+c] ^ multiply(0x02, state[12+c]);
-        
         state[c] = temp[0];
         state[4+c] = temp[1];
         state[8+c] = temp[2];
@@ -124,28 +113,22 @@ void AES_CFB::MixColumns(uint8_t* state) {
 void AES_CFB::AES_Encrypt(const uint8_t* plaintext, uint8_t* ciphertext, const uint32_t* roundKeys) {
     uint8_t state[16];
     memcpy(state, plaintext, 16);
-    
     AddRoundKey(state, roundKeys);
-    
     for (int round = 1; round < Nr; round++) {
         SubBytes(state);
         ShiftRows(state);
         MixColumns(state);
         AddRoundKey(state, roundKeys + round * Nb);
     }
-    
     SubBytes(state);
     ShiftRows(state);
     AddRoundKey(state, roundKeys + Nr * Nb);
-    
     memcpy(ciphertext, state, 16);
 }
 
 vector<uint8_t> AES_CFB::deriveKey(const string& password) {
     vector<uint8_t> key(AES_KEY_SIZE, 0);
-    
     string saltedPassword = password + "Kenpach1Zaracki_AES_SALT_2025-07-25";
-    
     for (size_t i = 0; i < AES_KEY_SIZE; i++) {
         uint32_t hash = 0x811c9dc5;
         for (size_t j = 0; j < saltedPassword.length(); j++) {
@@ -154,7 +137,6 @@ vector<uint8_t> AES_CFB::deriveKey(const string& password) {
         }
         key[i] = static_cast<uint8_t>(hash & 0xff);
     }
-    
     return key;
 }
 
@@ -163,93 +145,64 @@ vector<uint8_t> AES_CFB::generateIV() {
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<> dis(0, 255);
-    
     for (int i = 0; i < AES_BLOCK_SIZE; i++) {
         iv[i] = static_cast<uint8_t>(dis(gen));
     }
-    
     return iv;
 }
 
 void AES_CFB::encrypt(vector<unsigned char>& data, const string& password) {
     if (data.empty()) return;
-    
-    cout << "🔐 Инициализация AES-128 CFB (автор: Kenpach1Zaracki)..." << endl;
-    
     vector<uint8_t> key = deriveKey(password);
     vector<uint8_t> iv = generateIV();
-    
     uint32_t roundKeys[Nb * (Nr + 1)];
     KeyExpansion(key.data(), roundKeys);
-    
-    cout << "⚡ Шифрование в режиме CFB..." << endl;
-    
     vector<unsigned char> result;
     result.insert(result.end(), iv.begin(), iv.end());
-    
     uint8_t feedback[AES_BLOCK_SIZE];
     memcpy(feedback, iv.data(), AES_BLOCK_SIZE);
-    
     size_t pos = 0;
     while (pos < data.size()) {
         uint8_t keystream[AES_BLOCK_SIZE];
         AES_Encrypt(feedback, keystream, roundKeys);
-        
         int blockSize = min(AES_BLOCK_SIZE, static_cast<int>(data.size() - pos));
         for (int i = 0; i < blockSize; i++) {
             uint8_t cipherByte = data[pos + i] ^ keystream[i];
             result.push_back(cipherByte);
-            
             if (i < AES_BLOCK_SIZE - 1) {
                 memmove(feedback, feedback + 1, AES_BLOCK_SIZE - 1);
             }
             feedback[AES_BLOCK_SIZE - 1] = cipherByte;
         }
-        
         pos += blockSize;
     }
-    
     data = result;
-    cout << "✅ AES CFB шифрование завершено (Kenpach1Zaracki)!" << endl;
 }
 
 void AES_CFB::decrypt(vector<unsigned char>& data, const string& password) {
     if (data.size() < AES_BLOCK_SIZE) return;
-    
-    cout << "🔓 Инициализация AES-128 CFB расшифровки..." << endl;
-    
     vector<uint8_t> key = deriveKey(password);
     vector<uint8_t> iv(data.begin(), data.begin() + AES_BLOCK_SIZE);
     vector<unsigned char> ciphertext(data.begin() + AES_BLOCK_SIZE, data.end());
-    
     uint32_t roundKeys[Nb * (Nr + 1)];
     KeyExpansion(key.data(), roundKeys);
-    
-    cout << "⚡ Расшифровка в режиме CFB..." << endl;
-    
     vector<unsigned char> result;
     uint8_t feedback[AES_BLOCK_SIZE];
     memcpy(feedback, iv.data(), AES_BLOCK_SIZE);
-    
     size_t pos = 0;
     while (pos < ciphertext.size()) {
         uint8_t keystream[AES_BLOCK_SIZE];
         AES_Encrypt(feedback, keystream, roundKeys);
-        
         int blockSize = min(AES_BLOCK_SIZE, static_cast<int>(ciphertext.size() - pos));
         for (int i = 0; i < blockSize; i++) {
             uint8_t plainByte = ciphertext[pos + i] ^ keystream[i];
             result.push_back(plainByte);
-            
             if (i < AES_BLOCK_SIZE - 1) {
                 memmove(feedback, feedback + 1, AES_BLOCK_SIZE - 1);
             }
             feedback[AES_BLOCK_SIZE - 1] = ciphertext[pos + i];
         }
-        
         pos += blockSize;
     }
-    
     data = result;
-    cout << "✅ AES CFB расшифровка завершена!" << endl;
 }

@@ -26,7 +26,6 @@ int cliMode(int argc, char* argv[]) {
     string input = getArg(argc, argv, "--input");
     string output = getArg(argc, argv, "--output");
     string key = getArg(argc, argv, "--key");
-    string iv = getArg(argc, argv, "--iv"); // опционально для AES
 
     if (cipher.empty() || input.empty() || output.empty() || key.empty() || (!encrypt && !decrypt)) {
         cout << "Недостаточно параметров.\n";
@@ -47,7 +46,7 @@ int cliMode(int argc, char* argv[]) {
         if (encrypt) system.rc4Encrypt(data, key);
         if (decrypt) system.rc4Decrypt(data, key);
     } else if (cipher == "aes") {
-        if (encrypt) system.aesCfbEncrypt(data, key); // IV можно добавить при необходимости
+        if (encrypt) system.aesCfbEncrypt(data, key);
         if (decrypt) system.aesCfbDecrypt(data, key);
     } else if (cipher == "binvig" || cipher == "binary_vigenere") {
         if (encrypt) system.binaryVigenereEncrypt(data, key);
@@ -69,14 +68,13 @@ int main(int argc, char* argv[]) {
         return cliMode(argc, argv);
     }
 
-    // --- Интерактивный режим (оригинальный код) ---
+    // --- Интерактивный режим ---
     CryptoSystem system;
     int choice;
     
     do {
         system.showMenu();
         
-        // ИСПРАВЛЯЕМ ВВОД
         if (!(cin >> choice)) {
             cin.clear();
             cin.ignore(10000, '\n');
@@ -97,15 +95,12 @@ int main(int argc, char* argv[]) {
             case 4:
                 system.displayFile();
                 break;
-            case 5:
-                system.createTestFiles();
-                break;
             case 0:
-                cout << "\n👋 Выход из программы. До свидания!" << endl;
+                cout << "\nВыход из программы. До свидания!" << endl;
                 break;
             default:
                 cout << "\n⚠️  Неверный выбор! Попробуйте снова." << endl;
-                cout << "📄 Нажмите Enter для продолжения...";
+                cout << "Нажмите Enter для продолжения...";
                 cin.get();
                 break;
         }
