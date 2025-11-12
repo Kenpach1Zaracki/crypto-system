@@ -6,7 +6,7 @@
 using namespace std;
 
 // AES S-box
-const uint8_t AES_CFB::sbox[256] = {
+const uint8_t sbox[256] = {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
     0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
     0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
@@ -25,12 +25,18 @@ const uint8_t AES_CFB::sbox[256] = {
     0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
 };
 
-// Round constants
-const uint8_t AES_CFB::Rcon[11] = {
+const uint8_t Rcon[11] = {
     0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36
 };
 
-void AES_CFB::KeyExpansion(const uint8_t* key, uint32_t* w) {
+const int AES_KEY_SIZE = 16;
+const int AES_BLOCK_SIZE = 16;
+const int Nk = 4;
+const int Nb = 4;
+const int Nr = 10;
+
+// Вспомогательные функции
+static void KeyExpansion(const uint8_t* key, uint32_t* w) {
     uint32_t temp;
     int i = 0;
     while (i < Nk) {
@@ -51,42 +57,30 @@ void AES_CFB::KeyExpansion(const uint8_t* key, uint32_t* w) {
     }
 }
 
-void AES_CFB::AddRoundKey(uint8_t* state, const uint32_t* roundKey) {
+static void AddRoundKey(uint8_t* state, const uint32_t* roundKey) {
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
             state[i*4 + j] ^= (roundKey[j] >> (24 - 8*i)) & 0xff;
 }
 
-void AES_CFB::SubBytes(uint8_t* state) {
+static void SubBytes(uint8_t* state) {
     for (int i = 0; i < 16; i++)
         state[i] = sbox[state[i]];
 }
 
-void AES_CFB::ShiftRows(uint8_t* state) {
+static void ShiftRows(uint8_t* state) {
     uint8_t temp;
-    temp = state[1];
-    state[1] = state[5];
-    state[5] = state[9];
-    state[9] = state[13];
-    state[13] = temp;
-    temp = state[2];
-    state[2] = state[10];
-    state[10] = temp;
-    temp = state[6];
-    state[6] = state[14];
-    state[14] = temp;
-    temp = state[3];
-    state[3] = state[15];
-    state[15] = state[11];
-    state[11] = state[7];
-    state[7] = temp;
+    temp = state[1]; state[1] = state[5]; state[5] = state[9]; state[9] = state[13]; state[13] = temp;
+    temp = state[2]; state[2] = state[10]; state[10] = temp;
+    temp = state[6]; state[6] = state[14]; state[14] = temp;
+    temp = state[3]; state[3] = state[15]; state[15] = state[11]; state[11] = state[7]; state[7] = temp;
 }
 
-uint8_t AES_CFB::xtime(uint8_t x) {
+static uint8_t xtime(uint8_t x) {
     return (x << 1) ^ (((x >> 7) & 1) * 0x1b);
 }
 
-uint8_t AES_CFB::multiply(uint8_t x, uint8_t y) {
+static uint8_t multiply(uint8_t x, uint8_t y) {
     uint8_t result = 0;
     while (y) {
         if (y & 1) result ^= x;
@@ -96,21 +90,18 @@ uint8_t AES_CFB::multiply(uint8_t x, uint8_t y) {
     return result;
 }
 
-void AES_CFB::MixColumns(uint8_t* state) {
+static void MixColumns(uint8_t* state) {
     uint8_t temp[4];
     for (int c = 0; c < 4; c++) {
         temp[0] = multiply(0x02, state[c]) ^ multiply(0x03, state[4+c]) ^ state[8+c] ^ state[12+c];
         temp[1] = state[c] ^ multiply(0x02, state[4+c]) ^ multiply(0x03, state[8+c]) ^ state[12+c];
         temp[2] = state[c] ^ state[4+c] ^ multiply(0x02, state[8+c]) ^ multiply(0x03, state[12+c]);
         temp[3] = multiply(0x03, state[c]) ^ state[4+c] ^ state[8+c] ^ multiply(0x02, state[12+c]);
-        state[c] = temp[0];
-        state[4+c] = temp[1];
-        state[8+c] = temp[2];
-        state[12+c] = temp[3];
+        state[c] = temp[0]; state[4+c] = temp[1]; state[8+c] = temp[2]; state[12+c] = temp[3];
     }
 }
 
-void AES_CFB::AES_Encrypt(const uint8_t* plaintext, uint8_t* ciphertext, const uint32_t* roundKeys) {
+static void AES_Encrypt(const uint8_t* plaintext, uint8_t* ciphertext, const uint32_t* roundKeys) {
     uint8_t state[16];
     memcpy(state, plaintext, 16);
     AddRoundKey(state, roundKeys);
@@ -126,7 +117,7 @@ void AES_CFB::AES_Encrypt(const uint8_t* plaintext, uint8_t* ciphertext, const u
     memcpy(ciphertext, state, 16);
 }
 
-vector<uint8_t> AES_CFB::deriveKey(const string& password) {
+static vector<uint8_t> deriveKey(const string& password) {
     vector<uint8_t> key(AES_KEY_SIZE, 0);
     string saltedPassword = password + "Kenpach1Zaracki_AES_SALT_2025-07-25";
     for (size_t i = 0; i < AES_KEY_SIZE; i++) {
@@ -140,7 +131,7 @@ vector<uint8_t> AES_CFB::deriveKey(const string& password) {
     return key;
 }
 
-vector<uint8_t> AES_CFB::generateIV() {
+static vector<uint8_t> generateIV() {
     vector<uint8_t> iv(AES_BLOCK_SIZE);
     random_device rd;
     mt19937 gen(rd());
@@ -151,58 +142,61 @@ vector<uint8_t> AES_CFB::generateIV() {
     return iv;
 }
 
-void AES_CFB::encrypt(vector<unsigned char>& data, const string& password) {
-    if (data.empty()) return;
-    vector<uint8_t> key = deriveKey(password);
-    vector<uint8_t> iv = generateIV();
-    uint32_t roundKeys[Nb * (Nr + 1)];
-    KeyExpansion(key.data(), roundKeys);
-    vector<unsigned char> result;
-    result.insert(result.end(), iv.begin(), iv.end());
-    uint8_t feedback[AES_BLOCK_SIZE];
-    memcpy(feedback, iv.data(), AES_BLOCK_SIZE);
-    size_t pos = 0;
-    while (pos < data.size()) {
-        uint8_t keystream[AES_BLOCK_SIZE];
-        AES_Encrypt(feedback, keystream, roundKeys);
-        int blockSize = min(AES_BLOCK_SIZE, static_cast<int>(data.size() - pos));
-        for (int i = 0; i < blockSize; i++) {
-            uint8_t cipherByte = data[pos + i] ^ keystream[i];
-            result.push_back(cipherByte);
-            if (i < AES_BLOCK_SIZE - 1) {
-                memmove(feedback, feedback + 1, AES_BLOCK_SIZE - 1);
+// Экспортируемые функции
+extern "C" {
+    void aes_cfb_encrypt(vector<unsigned char>& data, const string& password) {
+        if (data.empty()) return;
+        vector<uint8_t> key = deriveKey(password);
+        vector<uint8_t> iv = generateIV();
+        uint32_t roundKeys[Nb * (Nr + 1)];
+        KeyExpansion(key.data(), roundKeys);
+        vector<unsigned char> result;
+        result.insert(result.end(), iv.begin(), iv.end());
+        uint8_t feedback[AES_BLOCK_SIZE];
+        memcpy(feedback, iv.data(), AES_BLOCK_SIZE);
+        size_t pos = 0;
+        while (pos < data.size()) {
+            uint8_t keystream[AES_BLOCK_SIZE];
+            AES_Encrypt(feedback, keystream, roundKeys);
+            int blockSize = min(AES_BLOCK_SIZE, static_cast<int>(data.size() - pos));
+            for (int i = 0; i < blockSize; i++) {
+                uint8_t cipherByte = data[pos + i] ^ keystream[i];
+                result.push_back(cipherByte);
+                if (i < AES_BLOCK_SIZE - 1) {
+                    memmove(feedback, feedback + 1, AES_BLOCK_SIZE - 1);
+                }
+                feedback[AES_BLOCK_SIZE - 1] = cipherByte;
             }
-            feedback[AES_BLOCK_SIZE - 1] = cipherByte;
+            pos += blockSize;
         }
-        pos += blockSize;
+        data = result;
     }
-    data = result;
-}
 
-void AES_CFB::decrypt(vector<unsigned char>& data, const string& password) {
-    if (data.size() < AES_BLOCK_SIZE) return;
-    vector<uint8_t> key = deriveKey(password);
-    vector<uint8_t> iv(data.begin(), data.begin() + AES_BLOCK_SIZE);
-    vector<unsigned char> ciphertext(data.begin() + AES_BLOCK_SIZE, data.end());
-    uint32_t roundKeys[Nb * (Nr + 1)];
-    KeyExpansion(key.data(), roundKeys);
-    vector<unsigned char> result;
-    uint8_t feedback[AES_BLOCK_SIZE];
-    memcpy(feedback, iv.data(), AES_BLOCK_SIZE);
-    size_t pos = 0;
-    while (pos < ciphertext.size()) {
-        uint8_t keystream[AES_BLOCK_SIZE];
-        AES_Encrypt(feedback, keystream, roundKeys);
-        int blockSize = min(AES_BLOCK_SIZE, static_cast<int>(ciphertext.size() - pos));
-        for (int i = 0; i < blockSize; i++) {
-            uint8_t plainByte = ciphertext[pos + i] ^ keystream[i];
-            result.push_back(plainByte);
-            if (i < AES_BLOCK_SIZE - 1) {
-                memmove(feedback, feedback + 1, AES_BLOCK_SIZE - 1);
+    void aes_cfb_decrypt(vector<unsigned char>& data, const string& password) {
+        if (data.size() < AES_BLOCK_SIZE) return;
+        vector<uint8_t> key = deriveKey(password);
+        vector<uint8_t> iv(data.begin(), data.begin() + AES_BLOCK_SIZE);
+        vector<unsigned char> ciphertext(data.begin() + AES_BLOCK_SIZE, data.end());
+        uint32_t roundKeys[Nb * (Nr + 1)];
+        KeyExpansion(key.data(), roundKeys);
+        vector<unsigned char> result;
+        uint8_t feedback[AES_BLOCK_SIZE];
+        memcpy(feedback, iv.data(), AES_BLOCK_SIZE);
+        size_t pos = 0;
+        while (pos < ciphertext.size()) {
+            uint8_t keystream[AES_BLOCK_SIZE];
+            AES_Encrypt(feedback, keystream, roundKeys);
+            int blockSize = min(AES_BLOCK_SIZE, static_cast<int>(ciphertext.size() - pos));
+            for (int i = 0; i < blockSize; i++) {
+                uint8_t plainByte = ciphertext[pos + i] ^ keystream[i];
+                result.push_back(plainByte);
+                if (i < AES_BLOCK_SIZE - 1) {
+                    memmove(feedback, feedback + 1, AES_BLOCK_SIZE - 1);
+                }
+                feedback[AES_BLOCK_SIZE - 1] = ciphertext[pos + i];
             }
-            feedback[AES_BLOCK_SIZE - 1] = ciphertext[pos + i];
+            pos += blockSize;
         }
-        pos += blockSize;
+        data = result;
     }
-    data = result;
 }

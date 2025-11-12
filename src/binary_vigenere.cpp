@@ -4,28 +4,8 @@
 
 using namespace std;
 
-void BinaryVigenere::encrypt(vector<unsigned char>& data, const string& key) {
-    if (data.empty() || key.empty()) return;
-    string binaryKey = keyToBinary(key);
-
-    for (size_t i = 0; i < data.size(); ++i) {
-        unsigned char result = 0;
-        for (int bit = 0; bit < 8; ++bit) {
-            size_t keyIndex = (i * 8 + bit) % binaryKey.length();
-            int dataBit = (data[i] >> bit) & 1;
-            int keyBit = (binaryKey[keyIndex] == '1') ? 1 : 0;
-            int encryptedBit = dataBit ^ keyBit;
-            result |= (encryptedBit << bit);
-        }
-        data[i] = result;
-    }
-}
-
-void BinaryVigenere::decrypt(vector<unsigned char>& data, const string& key) {
-    encrypt(data, key); // Симметричное к XOR
-}
-
-string BinaryVigenere::keyToBinary(const string& key) {
+// Вспомогательные функции
+static string keyToBinary(const string& key) {
     string binaryKey;
     for (char c : key) {
         for (int i = 7; i >= 0; --i) {
@@ -35,14 +15,26 @@ string BinaryVigenere::keyToBinary(const string& key) {
     return binaryKey;
 }
 
-void BinaryVigenere::applyBinaryKey(vector<unsigned char>& data, const string& binaryKey, bool) {
-    // В учебной версии метод не используется
-}
+// Экспортируемые функции
+extern "C" {
+    void binary_vigenere_encrypt(vector<unsigned char>& data, const string& key) {
+        if (data.empty() || key.empty()) return;
+        string binaryKey = keyToBinary(key);
 
-vector<int> BinaryVigenere::generateKeySchedule(const string& key, size_t dataSize) {
-    vector<int> schedule;
-    string binaryKey = keyToBinary(key);
-    for (size_t i = 0; i < dataSize * 8; ++i)
-        schedule.push_back((binaryKey[i % binaryKey.length()] == '1') ? 1 : 0);
-    return schedule;
+        for (size_t i = 0; i < data.size(); ++i) {
+            unsigned char result = 0;
+            for (int bit = 0; bit < 8; ++bit) {
+                size_t keyIndex = (i * 8 + bit) % binaryKey.length();
+                int dataBit = (data[i] >> bit) & 1;
+                int keyBit = (binaryKey[keyIndex] == '1') ? 1 : 0;
+                int encryptedBit = dataBit ^ keyBit;
+                result |= (encryptedBit << bit);
+            }
+            data[i] = result;
+        }
+    }
+
+    void binary_vigenere_decrypt(vector<unsigned char>& data, const string& key) {
+        binary_vigenere_encrypt(data, key); // Симметричное к XOR
+    }
 }
