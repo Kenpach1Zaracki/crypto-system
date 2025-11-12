@@ -1,157 +1,141 @@
 #include "crypto_system.h"
 #include <iostream>
-#include <fstream>
-#include <vector>
 #include <string>
-#include <limits>
+#include <vector>
+#include <dlfcn.h>
 
 using namespace std;
 
-void CryptoSystem::showMenu() {
-    clearScreen();
-    cout << "Криптографическая система\n";
-    cout << "1. Ввести текст в файл\n";
-    cout << "2. Зашифровать файл\n";
-    cout << "3. Расшифровать файл\n";
-    cout << "4. Просмотреть файл\n";
-    cout << "0. Выход\n";
-    cout << "Ваш выбор: ";
-}
+// Типы указателей на функции из библиотек
+typedef void (*CryptoFunc)(vector<unsigned char>&, const string&);
 
-void CryptoSystem::inputTextToFile() {
-    clearScreen();
-    cout << "Введите имя файла для записи текста: ";
-    string filename;
-    getline(cin, filename);
-    cout << "Введите текст для записи (для завершения введите пустую строку):\n";
-    ofstream fout(filename, ios::binary);
-    string line;
-    while (true) {
-        getline(cin, line);
-        if (line.empty()) break;
-        fout << line << "\n";
+// --- CLI helpers ---
+string getArg(int argc, char* argv[], const string& name) {
+    for (int i = 1; i < argc - 1; ++i) {
+        if (argv[i] == name)
+            return argv[i + 1];
     }
-    fout.close();
-    cout << "Текст записан в файл " << filename << endl;
-    cout << "Нажмите Enter для продолжения...";
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    return "";
 }
 
-void CryptoSystem::encryptFile() {
-    clearScreen();
-    string filename = getFilename("Введите имя файла для шифрования: ");
-    vector<unsigned char> data = readBinaryFile(filename);
+bool hasFlag(int argc, char* argv[], const string& flag) {
+    for (int i = 1; i < argc; ++i) if (argv[i] == flag) return true;
+    return false;
+}
 
-    int algo = chooseAlgorithm();
-    string key = getPassword();
+// CLI-режим с динамической загрузкой
+int cliMode(int argc, char* argv[]) {
+    string cipher = getArg(argc, argv, "--cipher");
+    bool encrypt = hasFlag(argc, argv, "-e") || hasFlag(argc, argv, "--encrypt");
+    bool decrypt = hasFlag(argc, argv, "-d") || hasFlag(argc, argv, "--decrypt");
+    string input = getArg(argc, argv, "--input");
+    string output = getArg(argc, argv, "--output");
+    string key = getArg(argc, argv, "--key");
 
-    switch (algo) {
-        case 1: rc4Encrypt(data, key); break;
-        case 2: aesCfbEncrypt(data, key); break;
-        case 3: binaryVigenereEncrypt(data, key); break;
-        default: cout << "Неверный выбор алгоритма!" << endl; return;
+    if (cipher.empty() || input.empty() || output.empty() || key.empty() || (!encrypt && !decrypt)) {
+        cout << "Недостаточно параметров.\n";
+        cout << "Пример:\n./crypto_app --cipher rc4 -e --input input.txt --output enc.dat --key secret\n";
+        cout << "Алгоритмы: rc4, aes, binvig\n";
+        cout << "Флаги: -e (encrypt), -d (decrypt)\n";
+        return 1;
     }
 
-    string outname = filename + ".encrypted";
-    writeBinaryFile(outname, data);
-    cout << "Файл зашифрован: " << outname << endl;
-    cout << "Нажмите Enter для продолжения...";
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-}
-
-void CryptoSystem::decryptFile() {
-    clearScreen();
-    string filename = getFilename("Введите имя файла для расшифровки: ");
-    vector<unsigned char> data = readBinaryFile(filename);
-
-    int algo = chooseAlgorithm();
-    string key = getPassword();
-
-    switch (algo) {
-        case 1: rc4Decrypt(data, key); break;
-        case 2: aesCfbDecrypt(data, key); break;
-        case 3: binaryVigenereDecrypt(data, key); break;
-        default: cout << "Неверный выбор алгоритма!" << endl; return;
+    CryptoSystem system;
+    vector<unsigned char> data = system.readBinaryFile(input);
+    if (data.empty()) {
+        cout << "Ошибка чтения файла: " << input << endl;
+        return 2;
     }
 
-    string outname = filename + ".decrypted";
-    writeBinaryFile(outname, data);
-    cout << "Файл расшифрован: " << outname << endl;
-    cout << "Нажмите Enter для продолжения...";
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-}
-
-void CryptoSystem::displayFile() {
-    clearScreen();
-    string filename = getFilename("Введите имя файла для просмотра: ");
-    vector<unsigned char> data = readBinaryFile(filename);
-
-    cout << "Содержимое файла " << filename << ":\n";
-    for (unsigned char c : data) {
-        cout << c;
+    // Определяем библиотеку и функцию
+    const char* libPath = nullptr;
+    const char* funcName = nullptr;
+    
+    if (cipher == "rc4") {
+        libPath = "./lib/librc4.so";
+        funcName = encrypt ? "rc4_encrypt" : "rc4_decrypt";
+    } else if (cipher == "aes") {
+        libPath = "./lib/libaes.so";
+        funcName = encrypt ? "aes_cfb_encrypt" : "aes_cfb_decrypt";
+    } else if (cipher == "binvig" || cipher == "binary_vigenere") {
+        libPath = "./lib/libbinvig.so";
+        funcName = encrypt ? "binary_vigenere_encrypt" : "binary_vigenere_decrypt";
+    } else {
+        cout << "Неизвестный алгоритм: " << cipher << endl;
+        return 3;
     }
-    cout << "\nНажмите Enter для продолжения...";
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    // Загрузка библиотеки
+    void* handle = dlopen(libPath, RTLD_LAZY);
+    if (!handle) {
+        cerr << "Ошибка загрузки библиотеки " << libPath << ": " << dlerror() << endl;
+        return 4;
+    }
+
+    // Получение указателя на функцию
+    CryptoFunc cryptoFunc = (CryptoFunc)dlsym(handle, funcName);
+    if (!cryptoFunc) {
+        cerr << "Ошибка получения функции " << funcName << ": " << dlerror() << endl;
+        dlclose(handle);
+        return 5;
+    }
+
+    // Вызов функции шифрования/дешифрования
+    cryptoFunc(data, key);
+
+    // Выгрузка библиотеки
+    dlclose(handle);
+
+    system.writeBinaryFile(output, data);
+    cout << "Готово. Результат сохранён в " << output << endl;
+    return 0;
 }
 
-// Алгоритмы
-void CryptoSystem::rc4Encrypt(vector<unsigned char>& data, const string& key) {
-    RC4::encrypt(data, key);
-}
-void CryptoSystem::rc4Decrypt(vector<unsigned char>& data, const string& key) {
-    RC4::decrypt(data, key);
-}
-void CryptoSystem::aesCfbEncrypt(vector<unsigned char>& data, const string& key) {
-    AES_CFB::encrypt(data, key);
-}
-void CryptoSystem::aesCfbDecrypt(vector<unsigned char>& data, const string& key) {
-    AES_CFB::decrypt(data, key);
-}
-void CryptoSystem::binaryVigenereEncrypt(vector<unsigned char>& data, const string& key) {
-    BinaryVigenere::encrypt(data, key);
-}
-void CryptoSystem::binaryVigenereDecrypt(vector<unsigned char>& data, const string& key) {
-    BinaryVigenere::decrypt(data, key);
-}
+int main(int argc, char* argv[]) {
+    setlocale(LC_ALL, "");
+    
+    if (argc > 1) {
+        return cliMode(argc, argv);
+    }
 
-// Вспомогательные методы
-string CryptoSystem::getPassword() {
-    cout << "Введите ключ шифрования: ";
-    string key;
-    getline(cin, key);
-    return key;
-}
-
-string CryptoSystem::getFilename(const string& prompt) {
-    cout << prompt;
-    string filename;
-    getline(cin, filename);
-    return filename;
-}
-
-int CryptoSystem::chooseAlgorithm() {
-    cout << "\nВыберите алгоритм:\n"
-         << "1. RC4\n"
-         << "2. AES-128 CFB\n"
-         << "3. Бинарный Виженер\n"
-         << "Ваш выбор: ";
+    // Интерактивный режим
+    CryptoSystem system;
     int choice;
-    cin >> choice;
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-    return choice;
-}
-
-vector<unsigned char> CryptoSystem::readBinaryFile(const string& filename) {
-    ifstream fin(filename, ios::binary);
-    vector<unsigned char> data((istreambuf_iterator<char>(fin)), istreambuf_iterator<char>());
-    return data;
-}
-
-void CryptoSystem::writeBinaryFile(const string& filename, const vector<unsigned char>& data) {
-    ofstream fout(filename, ios::binary);
-    fout.write(reinterpret_cast<const char*>(data.data()), data.size());
-}
-
-void CryptoSystem::clearScreen() {
-    cout << endl;
+    
+    do {
+        system.showMenu();
+        
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(10000, '\n');
+            choice = -1;
+        }
+        cin.ignore();
+        
+        switch (choice) {
+            case 1:
+                system.inputTextToFile();
+                break;
+            case 2:
+                system.encryptFile();
+                break;
+            case 3:
+                system.decryptFile();
+                break;
+            case 4:
+                system.displayFile();
+                break;
+            case 0:
+                cout << "\nВыход из программы. До свидания!" << endl;
+                break;
+            default:
+                cout << "\n⚠️  Неверный выбор! Попробуйте снова." << endl;
+                cout << "Нажмите Enter для продолжения...";
+                cin.get();
+                break;
+        }
+        
+    } while (choice != 0);
+    
+    return 0;
 }

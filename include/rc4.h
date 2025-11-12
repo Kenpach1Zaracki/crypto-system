@@ -4,16 +4,15 @@
 #include <vector>
 #include <string>
 
-class RC4 {
-public:
-    static void encrypt(std::vector<unsigned char>& data, const std::string& key);
-    static void decrypt(std::vector<unsigned char>& data, const std::string& key);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-private:
-    static void keySchedulingAlgorithm(std::vector<unsigned char>& S, const std::string& key);
-    static void pseudoRandomGenerationAlgorithm(std::vector<unsigned char>& data, 
-                                               std::vector<unsigned char>& S);
-    static std::vector<unsigned char> generateKeyStream(const std::string& key, size_t length);
-};
+void rc4_encrypt(std::vector<unsigned char>& data, const std::string& key);
+void rc4_decrypt(std::vector<unsigned char>& data, const std::string& key);
 
-#endif // RC4_H
+#ifdef __cplusplus
+}
+#endif
+
+#endif

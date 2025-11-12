@@ -5,7 +5,8 @@
 
 using namespace std;
 
-void RC4::encrypt(vector<unsigned char>& data, const string& key) {
+extern "C" { 
+    void RC4::encrypt(vector<unsigned char>& data, const string& key) {
     if (data.empty() || key.empty()) return;
     vector<unsigned char> S(256);
     keySchedulingAlgorithm(S, key);
@@ -49,5 +50,5 @@ vector<unsigned char> RC4::generateKeyStream(const string& key, size_t length) {
         swap(S[i], S[j]);
         keyStream[k] = S[(S[i] + S[j]) % 256];
     }
-    return keyStream;
+    return keyStream;}
 }

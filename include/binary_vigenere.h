@@ -4,15 +4,15 @@
 #include <vector>
 #include <string>
 
-class BinaryVigenere {
-public:
-    static void encrypt(std::vector<unsigned char>& data, const std::string& key);
-    static void decrypt(std::vector<unsigned char>& data, const std::string& key);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-private:
-    static std::string keyToBinary(const std::string& key);
-    static void applyBinaryKey(std::vector<unsigned char>& data, const std::string& binaryKey, bool encrypt);
-    static std::vector<int> generateKeySchedule(const std::string& key, size_t dataSize);
-};
+void binary_vigenere_encrypt(std::vector<unsigned char>& data, const std::string& key);
+void binary_vigenere_decrypt(std::vector<unsigned char>& data, const std::string& key);
 
-#endif // BINARY_VIGENERE_H
+#ifdef __cplusplus
+}
+#endif
+
+#endif
