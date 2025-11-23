@@ -1,68 +1,35 @@
-#include "file_io.h"
-#include <fstream>
 #include <iostream>
-#include "../include/cryptoLibs.h"
+#include <fstream>
+#include "../include/utils/file_io.h"
+
 
 using namespace std;
 
-bool writeTextToFile(const string& filename, const string& text) {
-ofstream outfile(filename, ios::binary);
-if (!outfile) return false;
-outfile.write(text.c_str(), text.size());
-outfile.close();
-return true;
+void writeToFile(const string& filename, const string& content) {
+    ofstream file(filename, ios::binary);
+    if (file) {
+        file.write(content.c_str(), content.size());
+        cout << "Файл записан: " << filename << endl;
+    } else {
+        cerr << "Ошибка записи файла: " << filename << endl;
+    }
 }
 
-bool readTextFromFile(const string& filename, string& text) {
-ifstream infile(filename, ios::binary);
-if (!infile) return false;
-text.clear();
-char c;
-while (infile.get(c)) text += c;
-infile.close();
-return true;
+string readFromFile(const string& filename) {
+    ifstream file(filename, ios::binary);
+    if (file) {
+        string content((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+        return content;
+    } else {
+        cerr << "Ошибка чтения файла: " << filename << endl;
+        return "";
+    }
 }
 
-bool caesarFileEncrypt(const string& filename, const string& key) {
-int shift = stoi(key);
-string text;
-if (!readTextFromFile(filename, text)) return false;
-string encrypted = caesarEncrypt(text, shift);
-return writeTextToFile(filename, encrypted);
-}
-
-bool caesarFileDecrypt(const string& filename, const string& key) {
-int shift = stoi(key);
-string text;
-if (!readTextFromFile(filename, text)) return false;
-string decrypted = caesarDecrypt(text, shift);
-return writeTextToFile(filename, decrypted);
-}
-
-bool atbashFileEncrypt(const string& filename, const string& key) {
-string text;
-if (!readTextFromFile(filename, text)) return false;
-string encrypted = atbashUniversal(text); 
-return writeTextToFile(filename, encrypted);
-}
-
-bool atbashFileDecrypt(const string& filename, const string& key) {
-string text;
-if (!readTextFromFile(filename, text)) return false;
-string decrypted = atbashUniversal(text);
-return writeTextToFile(filename, decrypted);
-}
-
-bool doubleTranspositionFileEncrypt(const string& filename, const string& key) {
-string text;
-if (!readTextFromFile(filename, text)) return false;
-string encrypted = doubleTranspositionEncrypt(text, key);
-return writeTextToFile(filename, encrypted);
-}
-
-bool doubleTranspositionFileDecrypt(const string& filename, const string& key) {
-string text;
-if (!readTextFromFile(filename, text)) return false;
-string decrypted = doubleTranspositionDecrypt(text, key);
-return writeTextToFile(filename, decrypted);
+void displayFileContent(const string& filename) {
+    string content = readFromFile(filename);
+    if (!content.empty()) {
+        cout << "Содержимое файла " << filename << ":\n";
+        cout << content << endl;
+    }
 }

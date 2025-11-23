@@ -1,38 +1,38 @@
 CXX = g++
-CXXFLAGS = -fPIC -Wall -Wextra -std=c++17 -Iinclude
+CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude -fPIC
 LDFLAGS = -shared
-MAIN_LDFLAGS = -L. -lCaesar -lAtbash -lDoubleTransposition -lValidInput -Wl,-rpath,.
 
 # Цели
-LIB_TARGETS = libCaesar.so libAtbash.so libDoubleTransposition.so libValidInput.so
-MAIN_TARGET = cryptoTool
-
-all: $(LIB_TARGETS) $(MAIN_TARGET)
+all: build/libCaesar.so build/libAtbash.so build/libDoubleTransposition.so build/libValidInput.so build/cryptoTool
 
 # Библиотеки
-libCaesar.so: libs/caesar/caesar.cpp
+build/libCaesar.so: libs/caesar/caesar.cpp
+	@mkdir -p build
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
 
-libAtbash.so: libs/atbash/atbash.cpp
+build/libAtbash.so: libs/atbash/atbash.cpp
+	@mkdir -p build
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
 
-libDoubleTransposition.so: libs/double_transposition/double_transposition.cpp
+build/libDoubleTransposition.so: libs/double_transposition/double_transposition.cpp
+	@mkdir -p build
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
 
-libValidInput.so: libs/validInput/validInput.cpp
+build/libValidInput.so: libs/validInput/validInput.cpp
+	@mkdir -p build
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
 
 # Основная программа
-$(MAIN_TARGET): src/main.cpp src/utils/file_io.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(MAIN_LDFLAGS)
+build/cryptoTool: src/main.cpp src/file_io.cpp
+	@mkdir -p build
+	$(CXX) $(CXXFLAGS) -fPIC $^ -o $@ -Lbuild -lCaesar -lAtbash -lDoubleTransposition -lValidInput
 
-# Для linux папки
+# Linux версия
 linux: all
-	mkdir -p linux
-	cp $(MAIN_TARGET) $(LIB_TARGETS) linux/
+	@mkdir -p linux
+	cp build/cryptoTool build/*.so linux/
 
 clean:
-	rm -f $(LIB_TARGETS) $(MAIN_TARGET)
-	rm -rf linux
+	rm -rf build linux
 
 .PHONY: all clean linux

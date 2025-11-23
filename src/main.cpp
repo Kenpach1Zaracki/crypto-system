@@ -17,6 +17,14 @@ cin.ignore();
 bool fileExists(const string &path) {
 return filesystem::exists(path);
 }
+string smartFindFile(const string& filename) {
+    if (filesystem::exists(filename))
+        return filename;
+    string alt = "test_data/" + filename;
+    if (filesystem::exists(alt))
+        return alt;
+    return "";
+}
 
 string readFile(const string &filename) {
 ifstream infile(filename, ios::binary);
@@ -158,7 +166,11 @@ while (running) {
         }
         case 2: { // Шифровать файл
             int cipherChoice = validInputCipher();
-            string filename = validInputFile();
+            string filename = smartFindFile(validInputFile());
+            if (filename.empty()) {
+                cout << "Ошибка: файл не найден ни в текущей директории, ни в test_data/\n";
+                break;
+            }
             int action = 1;
             switch (cipherChoice) {
                 case 1: {
