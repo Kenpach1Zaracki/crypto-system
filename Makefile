@@ -1,56 +1,38 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude -fPIC
-LDFLAGS = -ldl
+CXXFLAGS = -fPIC -Wall -Wextra -std=c++17 -Iinclude
+LDFLAGS = -shared
+MAIN_LDFLAGS = -L. -lCaesar -lAtbash -lDoubleTransposition -lValidInput -Wl,-rpath,.
 
-SRCDIR = src
-INCDIR = include
-LIBDIR = lib
+# Цели
+LIB_TARGETS = libCaesar.so libAtbash.so libDoubleTransposition.so libValidInput.so
+MAIN_TARGET = cryptoTool
 
-TARGET = crypto_app
+all: $(LIB_TARGETS) $(MAIN_TARGET)
 
-# Динамические библиотеки
-LIBS = $(LIBDIR)/librc4.so $(LIBDIR)/libaes.so $(LIBDIR)/libbinvig.so
+# Библиотеки
+libCaesar.so: libs/caesar/caesar.cpp
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
 
-all: $(LIBDIR) $(LIBS) $(TARGET)
+libAtbash.so: libs/atbash/atbash.cpp
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
 
-$(LIBDIR):
-	mkdir -p $(LIBDIR)
+libDoubleTransposition.so: libs/double_transposition/double_transposition.cpp
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
 
-# Компиляция объектных файлов с флагом -fPIC
-$(SRCDIR)/rc4.o: $(SRCDIR)/rc4.cpp $(INCDIR)/rc4.h
-	$(CXX) $(CXXFLAGS) -c $(SRCDIR)/rc4.cpp -o $(SRCDIR)/rc4.o
-
-$(SRCDIR)/aes_cfb.o: $(SRCDIR)/aes_cfb.cpp $(INCDIR)/aes_cfb.h
-	$(CXX) $(CXXFLAGS) -c $(SRCDIR)/aes_cfb.cpp -o $(SRCDIR)/aes_cfb.o
-
-$(SRCDIR)/binary_vigenere.o: $(SRCDIR)/binary_vigenere.cpp $(INCDIR)/binary_vigenere.h
-	$(CXX) $(CXXFLAGS) -c $(SRCDIR)/binary_vigenere.cpp -o $(SRCDIR)/binary_vigenere.o
-
-$(SRCDIR)/crypto_system.o: $(SRCDIR)/crypto_system.cpp $(INCDIR)/crypto_system.h
-	$(CXX) $(CXXFLAGS) -c $(SRCDIR)/crypto_system.cpp -o $(SRCDIR)/crypto_system.o
-
-# Создание динамических библиотек
-$(LIBDIR)/librc4.so: $(SRCDIR)/rc4.o
-	$(CXX) -shared -o $@ $^
-
-$(LIBDIR)/libaes.so: $(SRCDIR)/aes_cfb.o
-	$(CXX) -shared -o $@ $^
-
-$(LIBDIR)/libbinvig.so: $(SRCDIR)/binary_vigenere.o
-	$(CXX) -shared -o $@ $^
+libValidInput.so: libs/validInput/validInput.cpp
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
 
 # Основная программа
-$(TARGET): $(SRCDIR)/main.cpp $(SRCDIR)/crypto_system.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TARGET) $(SRCDIR)/main.cpp $(SRCDIR)/crypto_system.o
+$(MAIN_TARGET): src/main.cpp src/utils/file_io.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(MAIN_LDFLAGS)
+
+# Для linux папки
+linux: all
+	mkdir -p linux
+	cp $(MAIN_TARGET) $(LIB_TARGETS) linux/
 
 clean:
-	rm -f $(SRCDIR)/*.o $(TARGET)
-	rm -rf $(LIBDIR)
-	rm -f *.encrypted *.decrypted
+	rm -f $(LIB_TARGETS) $(MAIN_TARGET)
+	rm -rf linux
 
-help:
-	@echo "make          - собрать проект"
-	@echo "make clean    - очистить объектные файлы и библиотеки"
-	@echo "make help     - показать эту справку"
-
-.PHONY: all clean help
+.PHONY: all clean linux
