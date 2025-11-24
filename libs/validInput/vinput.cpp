@@ -1,82 +1,85 @@
 #include <iostream>
 #include <string>
-#include <filesystem>
-#include "../../include/utils/validInput.h"
+#include <limits>
 
-namespace fs = std::filesystem;
 using namespace std;
 
 int validInputMainMenu() {
+    int choice;
     while (true) {
-        cout << "Выберите действие:\n";
-        cout << "1 - Ввести текст\n";
-        cout << "2 - Зашифровать файл\n"; 
-        cout << "3 - Расшифровать файл\n";
-        cout << "4 - Просмотреть файл\n";
-        cout << "0 - Выход\nВаш выбор >> ";
-        string input;
-        getline(cin, input);
-        if (input == "0") return 0;
-        if (input == "1") return 1;
-        if (input == "2") return 2;
-        if (input == "3") return 3;
-        if (input == "4") return 4;
+        cout << "\nГлавное меню:\n"
+             << "1. Ввести текст\n"
+             << "2. Зашифровать файл\n"
+             << "3. Расшифровать файл\n"
+             << "4. Просмотреть файл\n"
+             << "0. Выход\n"
+             << "Ваш выбор: ";
+
+        if (cin >> choice && choice >= 0 && choice <= 4) {
+            cin.ignore();
+            return choice;
+        }
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cout << "Неверный выбор! Попробуйте снова.\n";
     }
 }
 
-int validInputSubMenu() {
+int validInputCipher() {
+    int choice;
     while (true) {
-        cout << "Выберите алгоритм шифрования:\n";
-        cout << "1 - Шифр Цезаря\n";
-        cout << "2 - Шифр Атбаш\n";
-        cout << "3 - Двойная перестановка\nВаш выбор >> ";
-        string input;
-        getline(cin, input);
-        if (input == "1") return 1;
-        if (input == "2") return 2;
-        if (input == "3") return 3;
-        cout << "Неверный выбор! Попробуйте снова.\n";
-    }
-}
+        cout << "\nВыберите алгоритм:\n"
+             << "1. Caesar\n"
+             << "2. Atbash\n"
+             << "3. Double Transposition\n"
+             << "Ваш выбор: ";
 
-int validInputKeyCaesar() {
-    while (true) {
-        cout << "Введите ключ для шифра Цезаря (число) >> ";
-        string input;
-        getline(cin, input);
-        try { return stoi(input); } 
-        catch (...) { cout << "Ошибка: введите целое число!\n"; }
+        if (cin >> choice && choice >= 1 && choice <= 3) {
+            cin.ignore();
+            return choice;
+        }
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Неверный выбор! Попробуйте снова.\n";
     }
 }
 
 int validInputAction() {
+    int choice;
     while (true) {
-        cout << "Выберите действие:\n1 - Шифрование\n2 - Дешифрование\nВаш выбор >> ";
-        string input;
-        getline(cin, input);
-        if (input == "1") return 1;
-        if (input == "2") return 2;
+        cout << "Выберите действие:\n"
+             << "1. Шифровать\n"
+             << "2. Дешифровать\n"
+             << "Ваш выбор: ";
+
+        if (cin >> choice && (choice == 1 || choice == 2)) {
+            cin.ignore();
+            return choice;
+        }
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cout << "Неверный выбор! Попробуйте снова.\n";
     }
 }
 
-std::string validInputKey() {
-    while (true) {
-        cout << "Введите ключ >> ";
-        string input;
-        getline(cin, input);
-        if (!input.empty()) return input;
-        cout << "Ошибка: ключ не может быть пустым!\n";
-    }
+int validInputShift() {
+    int shift;
+    cout << "Введите ключ шифрования (число): ";
+    cin >> shift;
+    cin.ignore();
+    return shift;
 }
 
-std::string validInputPathFile() {
-    while (true) {
-        cout << "Введите путь к файлу >> ";
-        string input;
-        getline(cin, input);
-        if (fs::exists(input)) return input;
-        cout << "Ошибка: файл не найден!\n";
-    }
+string validInputKey() {
+    cout << "Введите ключ шифрования: ";
+    string key;
+    getline(cin, key);
+    return key;
+}
+
+string validInputFile() {
+    cout << "Введите имя файла: ";
+    string filename;
+    getline(cin, filename);
+    return filename;
 }

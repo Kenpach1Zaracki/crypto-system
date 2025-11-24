@@ -1,38 +1,63 @@
-CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude -fPIC
-LDFLAGS = -shared
+# ===========================
+#        SETTINGS
+# ===========================
 
-# Цели
-all: build/libCaesar.so build/libAtbash.so build/libDoubleTransposition.so build/libValidInput.so build/cryptoTool
+CC = g++
+CFLAGS = -std=c++17 -Wall -Wextra -O2
 
-# Библиотеки
-build/libCaesar.so: libs/caesar/caesar.cpp
-	@mkdir -p build
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
+INCLUDES = -Iinclude -Iinclude/utils -Ilibs
 
-build/libAtbash.so: libs/atbash/atbash.cpp
-	@mkdir -p build
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
+SRC_MAIN = src/main.cpp
+SRC_FILE_IO = src/file_io.cpp
 
-build/libDoubleTransposition.so: libs/double_transposition/double_transposition.cpp
-	@mkdir -p build
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
+SRC_CAESAR = libs/caesar/shift_c.cpp
+SRC_ATBASH = libs/atbash/atb_cipher.cpp
+SRC_DTRANS = libs/double_transposition/dtrans.cpp
+SRC_VINPUT = libs/validInput/vinput.cpp
 
-build/libValidInput.so: libs/validInput/validInput.cpp
-	@mkdir -p build
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
+OBJS = \
+    build/main.o \
+    build/file_io.o \
+    build/shift_c.o \
+    build/atb_cipher.o \
+    build/dtrans.o \
+    build/vinput.o
 
-# Основная программа
-build/cryptoTool: src/main.cpp src/file_io.cpp
-	@mkdir -p build
-	$(CXX) $(CXXFLAGS) -fPIC $^ -o $@ -Lbuild -lCaesar -lAtbash -lDoubleTransposition -lValidInput
+TARGET = linux
 
-# Linux версия
-linux: all
-	@mkdir -p linux
-	cp build/cryptoTool build/*.so linux/
+# ===========================
+#        RULES
+# ===========================
 
+all: $(TARGET)
+
+$(TARGET): build $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)
+
+build:
+	mkdir -p build
+
+build/main.o: $(SRC_MAIN)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+build/file_io.o: $(SRC_FILE_IO)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+build/shift_c.o: $(SRC_CAESAR)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+build/atb_cipher.o: $(SRC_ATBASH)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+build/dtrans.o: $(SRC_DTRANS)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+build/vinput.o: $(SRC_VINPUT)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# ===========================
+#       CLEAN
+# ===========================
 clean:
-	rm -rf build linux
+	rm -rf build $(TARGET)
 
-.PHONY: all clean linux

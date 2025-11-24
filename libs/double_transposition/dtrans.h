@@ -1,9 +1,6 @@
-#ifndef DOUBLE_TRANSPOSITION_H
-#define DOUBLE_TRANSPOSITION_H
-
+#pragma once
 #include <string>
+#include <vector>
 
-std::string doubleTranspositionEncrypt(const std::string& data, const std::string& key);
-std::string doubleTranspositionDecrypt(const std::string& data, const std::string& key);
-
-#endif // DOUBLE_TRANSPOSITION_H
+std::string doubleTransEncrypt(const std::string& text, const std::string& colKey, const std::string& rowKey);
+std::string doubleTransDecrypt(const std::string& cipher, const std::string& colKey, const std::string& rowKey);
