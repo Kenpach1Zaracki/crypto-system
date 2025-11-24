@@ -1,0 +1,8 @@
+test_data/
+*.mp4
+*.mp3
+*.png
+*.enc
+*.dec
+*.out
+build/

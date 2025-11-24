@@ -1,0 +1,30 @@
+# Исполняемые файлы
+crypto_app
+*.exe
+
+# Объектные файлы
+*.o
+*.obj
+
+# Временные файлы
+*.tmp
+*.temp
+*~
+*.backup
+
+# IDE файлы
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Файлы логов
+*.log
+
+# Тестовые зашифрованные файлы (по желанию)
+# *.encrypted
+# *_decrypted
