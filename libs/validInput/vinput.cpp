@@ -4,6 +4,11 @@
 
 using namespace std;
 
+static void clearInput() {
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+}
+
 int validInputMainMenu() {
     int choice;
     while (true) {
@@ -16,11 +21,10 @@ int validInputMainMenu() {
              << "Ваш выбор: ";
 
         if (cin >> choice && choice >= 0 && choice <= 4) {
-            cin.ignore();
+            clearInput();
             return choice;
         }
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        clearInput();
         cout << "Неверный выбор! Попробуйте снова.\n";
     }
 }
@@ -35,11 +39,10 @@ int validInputCipher() {
              << "Ваш выбор: ";
 
         if (cin >> choice && choice >= 1 && choice <= 3) {
-            cin.ignore();
+            clearInput();
             return choice;
         }
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        clearInput();
         cout << "Неверный выбор! Попробуйте снова.\n";
     }
 }
@@ -53,11 +56,10 @@ int validInputAction() {
              << "Ваш выбор: ";
 
         if (cin >> choice && (choice == 1 || choice == 2)) {
-            cin.ignore();
+            clearInput();
             return choice;
         }
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        clearInput();
         cout << "Неверный выбор! Попробуйте снова.\n";
     }
 }
@@ -66,11 +68,12 @@ int validInputShift() {
     int shift;
     cout << "Введите ключ шифрования (число): ";
     cin >> shift;
-    cin.ignore();
+    clearInput();
     return shift;
 }
 
 string validInputKey() {
+    // clearInput(); // <— главное исправление
     cout << "Введите ключ шифрования: ";
     string key;
     getline(cin, key);
@@ -78,6 +81,7 @@ string validInputKey() {
 }
 
 string validInputFile() {
+    // clearInput(); // <— главное исправление
     cout << "Введите имя файла: ";
     string filename;
     getline(cin, filename);

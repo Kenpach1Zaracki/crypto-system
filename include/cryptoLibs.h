@@ -6,7 +6,8 @@ std::string caesarEncrypt(const std::string& data, int shift);
 std::string caesarDecrypt(const std::string& data, int shift);
 
 // Atbash
-std::string atbashAll(const std::string& data);
+std::string atbashText(const std::string& text);
+std::string atbashAll(const std::string& data);        // БАЙТЫ
 
 // Double Transposition
 std::string doubleTranspositionEncrypt(const std::string& data, const std::string& key);

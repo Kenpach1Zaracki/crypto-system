@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "cryptoLibs.h"
-#include "../libs/double_transposition/dtrans.h" 
+#include "../libs/double_transposition/dtrans.h"
 #include "utils/validInput.h"
 
 using namespace std;
@@ -19,6 +19,7 @@ void pause() {
 bool fileExists(const string &path) {
     return filesystem::exists(path);
 }
+
 string smartFindFile(const string& filename) {
     if (filesystem::exists(filename))
         return filename;
@@ -42,7 +43,7 @@ void writeFile(const string &filename, const string &data) {
 string identityRowKey(size_t rows) {
     string result;
     for (size_t i = 0; i < rows; ++i)
-        result += std::to_string(i % 10);
+        result += std::to_string((i % rows) + 1); 
     return result;
 }
 
@@ -82,7 +83,7 @@ void atbashAsciiFunct(const string &filename, int action) {
         return;
     }
     string data = readFile(filename);
-    string result = atbashAll(data);
+    string result = atbashAll(data); 
     writeFile(filename + (action == 1 ? ".enc" : ".dec"), result);
 }
 
@@ -127,7 +128,7 @@ int main() {
                 running = false;
                 cout << "Выход из программы. До свидания!\n";
                 break;
-            case 1: { 
+            case 1: {
                 int cipherChoice = validInputCipher();
                 string inputText, output, key;
                 cout << "Введите текст: ";
@@ -139,11 +140,11 @@ int main() {
                         output = (action == 1 ? caesarEncrypt(inputText, stoi(key)) : caesarDecrypt(inputText, stoi(key)));
                         cout << (action == 1 ? "Зашифрованный текст: " : "Расшифрованный текст: ") << output << "\n";
                         break;
-                    case 2: 
-                        output = atbashAll(inputText);
+                    case 2: // Atbash (только для текста)
+                        output = atbashText(inputText);
                         cout << (action == 1 ? "Зашифрованный текст: " : "Расшифрованный текст: ") << output << "\n";
                         break;
-                    case 3: 
+                    case 3:
                         doubleTranspositionTextFunct(inputText, action);
                         break;
                 }

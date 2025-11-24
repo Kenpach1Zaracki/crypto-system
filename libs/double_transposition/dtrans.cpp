@@ -3,13 +3,28 @@
 #include <algorithm>
 #include <stdexcept>
 
-// Парсит строковый ключ вида "3142" -> {2,0,3,1} (от 1 до N)
+// Парсит строковый ключ вида "4132" -> {3,0,2,1}
 static std::vector<int> parseKey(const std::string& key) {
-    std::vector<int> perm;
+    // Удаляем пробелы и невидимые символы из ключа
+    std::string cleanKey;
     for (char ch : key) {
-        if (ch < '1' || ch > '9') throw std::invalid_argument("Ключ должен содержать только цифры от 1 до N.");
-        perm.push_back(int(ch - '1'));
+        if (ch >= '1' && ch <= '9') {
+            cleanKey += ch;
+        }
     }
+    
+    if (cleanKey.empty()) {
+        throw std::invalid_argument("Ключ должен содержать хотя бы одну цифру от 1 до 9");
+    }
+    
+    size_t N = cleanKey.size();
+    std::vector<int> perm(N);
+
+    for (size_t i = 0; i < N; ++i) {
+        char ch = cleanKey[i];
+        perm[i] = ch - '1';
+    }
+    
     return perm;
 }
 
@@ -20,32 +35,31 @@ static std::vector<int> inversePerm(const std::vector<int>& perm) {
     return inv;
 }
 
-std::string doubleTransEncrypt(const std::string& text, const std::string& colKey, const std::string& rowKey) {
+// Универсальный Double Transposition
+std::string doubleTransEncrypt(const std::string& data, const std::string& colKey, const std::string& rowKey) {
     auto colPerm = parseKey(colKey);
     auto rowPerm = parseKey(rowKey);
     size_t cols = colPerm.size();
     size_t rows = rowPerm.size();
 
-    // Создать таблицу, дополнить пробелами если текста не хватает
-    std::vector<std::vector<char>> table(rows, std::vector<char>(cols, ' '));
+    std::vector<std::vector<char>> table(rows, std::vector<char>(cols, 0));
     size_t pos = 0;
     for (size_t r = 0; r < rows; ++r)
         for (size_t c = 0; c < cols; ++c)
-            if (pos < text.size()) table[r][c] = text[pos++];
+            if (pos < data.size()) table[r][c] = data[pos++];
 
-    // Сначала переставляем столбцы
+    // перестановка столбцов
     std::vector<std::vector<char>> afterCols(rows, std::vector<char>(cols));
     for (size_t c = 0; c < cols; ++c)
         for (size_t r = 0; r < rows; ++r)
             afterCols[r][c] = table[r][colPerm[c]];
 
-    // Затем строки
+    // перестановка строк
     std::vector<std::vector<char>> afterRows(rows, std::vector<char>(cols));
     for (size_t r = 0; r < rows; ++r)
         for (size_t c = 0; c < cols; ++c)
             afterRows[r][c] = afterCols[rowPerm[r]][c];
 
-    // Читать по строкам, собрать строку
     std::string result;
     for (size_t r = 0; r < rows; ++r)
         for (size_t c = 0; c < cols; ++c)
@@ -58,31 +72,28 @@ std::string doubleTransDecrypt(const std::string& cipher, const std::string& col
     auto rowPerm = parseKey(rowKey);
     size_t cols = colPerm.size();
     size_t rows = rowPerm.size();
-    if (cipher.size() != rows * cols)
-        throw std::invalid_argument("Размер текста не кратен размеру таблицы! Попробуйте дописать пробелы в конец шифртекста.");
 
-    // Заполнить таблицу построчно
+    if (cipher.size() != rows * cols)
+        throw std::invalid_argument("Размер файла не кратен размеру таблицы. Добавьте недостающие байты.");
+
     std::vector<std::vector<char>> table(rows, std::vector<char>(cols));
     size_t pos = 0;
     for (size_t r = 0; r < rows; ++r)
         for (size_t c = 0; c < cols; ++c)
             table[r][c] = cipher[pos++];
 
-    // Сначала обратная перестановка строк
     auto invRow = inversePerm(rowPerm);
     std::vector<std::vector<char>> afterRows(rows, std::vector<char>(cols));
     for (size_t r = 0; r < rows; ++r)
         for (size_t c = 0; c < cols; ++c)
             afterRows[invRow[r]][c] = table[r][c];
 
-    // Затем обратная перестановка столбцов
     auto invCol = inversePerm(colPerm);
     std::vector<std::vector<char>> afterCols(rows, std::vector<char>(cols));
     for (size_t c = 0; c < cols; ++c)
         for (size_t r = 0; r < rows; ++r)
             afterCols[r][invCol[c]] = afterRows[r][c];
 
-    // Читать по строкам
     std::string result;
     for (size_t r = 0; r < rows; ++r)
         for (size_t c = 0; c < cols; ++c)
